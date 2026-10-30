@@ -1,0 +1,13 @@
+{
+  "name": "memdeck",
+  "private": true,
+  "version": "1.0.0",
+  "description": "MemDeck monorepo",
+  "scripts": {
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "lint": "npm run lint --prefix frontend",
+    "test": "npm test --prefix backend",
+    "build": "npm run build --prefix frontend"
+  }
+}
