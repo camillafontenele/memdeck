@@ -186,4 +186,61 @@ export async function deckRoutes(app: FastifyInstance) {
       return reply.send(updatedDeck);
     },
   );
+
+  app.delete(
+    "/decks/:deckId",
+    {
+      preHandler: [authGuard],
+      schema: {
+        tags: ["Decks"],
+        summary: "Exclui um deck",
+        description:
+          "Exclui um baralho do usuário autenticado, seus cards e revisões associadas.",
+        params: {
+          type: "object",
+          required: ["deckId"],
+          properties: {
+            deckId: { type: "string" },
+          },
+        },
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        response: {
+          204: {
+            description: "Deck excluído com sucesso",
+            type: "null",
+          },
+          404: {
+            description: "Deck não encontrado",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { deckId } = request.params as { deckId: string };
+      const user = request.user as { sub: string; email: string };
+
+      const deck = await prisma.deck.findFirst({
+        where: {
+          id: deckId,
+          userId: user.sub,
+        },
+      });
+
+      if (!deck) {
+        return reply.status(404).send({ message: "Deck não encontrado" });
+      }
+
+      await prisma.deck.delete({ where: { id: deck.id } });
+
+      return reply.status(204).send();
+    },
+  );
 }

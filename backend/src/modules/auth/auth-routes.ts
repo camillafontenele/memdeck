@@ -4,6 +4,8 @@ import { prisma } from "../../lib/prisma.js";
 import { google } from "googleapis";
 
 export async function authRoutes(app: FastifyInstance) {
+  const tokenExpiresIn = process.env.JWT_EXPIRES_IN ?? "7d";
+
   app.post(
     "/auth/register",
     {
@@ -83,7 +85,7 @@ export async function authRoutes(app: FastifyInstance) {
           email: user.email,
         },
         {
-          expiresIn: "7d",
+          expiresIn: tokenExpiresIn,
         },
       );
 
@@ -177,10 +179,15 @@ export async function authRoutes(app: FastifyInstance) {
         });
       }
 
-      const token = app.jwt.sign({
-        sub: user.id,
-        email: user.email,
-      });
+      const token = app.jwt.sign(
+        {
+          sub: user.id,
+          email: user.email,
+        },
+        {
+          expiresIn: tokenExpiresIn,
+        },
+      );
 
       return reply.status(200).send({
         user: {
@@ -193,13 +200,26 @@ export async function authRoutes(app: FastifyInstance) {
     },
   );
 
-  const googleOAuthClient = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI,
+  const googleOAuthConfigured = Boolean(
+    process.env.GOOGLE_CLIENT_ID &&
+      process.env.GOOGLE_CLIENT_SECRET &&
+      process.env.GOOGLE_REDIRECT_URI,
   );
+  const googleOAuthClient = googleOAuthConfigured
+    ? new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.GOOGLE_REDIRECT_URI,
+      )
+    : null;
 
   app.get("/auth/google", async (_request, reply) => {
+    if (!googleOAuthClient) {
+      return reply.status(503).send({
+        message: "Autenticação com Google não está configurada.",
+      });
+    }
+
     const authorizationUrl = googleOAuthClient.generateAuthUrl({
       access_type: "online",
       scope: ["openid", "email", "profile"],
@@ -209,6 +229,12 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.get("/auth/google/callback", async (request, reply) => {
+    if (!googleOAuthClient) {
+      return reply.status(503).send({
+        message: "Autenticação com Google não está configurada.",
+      });
+    }
+
     const { code } = request.query as {
       code?: string;
     };
@@ -261,10 +287,15 @@ export async function authRoutes(app: FastifyInstance) {
       });
     }
 
-    const token = app.jwt.sign({
-      sub: user.id,
-      email: user.email,
-    });
+    const token = app.jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+      },
+      {
+        expiresIn: tokenExpiresIn,
+      },
+    );
 
     return reply.send({
       user: {

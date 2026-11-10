@@ -1,4 +1,13 @@
-export const API_URL = "http://localhost:3333";
+const configuredApiUrl = import.meta.env.VITE_API_URL;
+
+if (import.meta.env.PROD && !configuredApiUrl) {
+  throw new Error("VITE_API_URL deve ser definida em produção.");
+}
+
+export const API_URL = (configuredApiUrl ?? "http://localhost:3333").replace(
+  /\/$/,
+  "",
+);
 
 const TOKEN_STORAGE_KEY = "token";
 

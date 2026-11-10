@@ -8,6 +8,10 @@
     "dev:backend": "npm run dev --prefix backend",
     "lint": "npm run lint --prefix frontend",
     "test": "npm test --prefix backend",
-    "build": "npm run build --prefix frontend"
+    "build:frontend": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "build": "npm run build:frontend && npm run build:backend",
+    "start:backend": "npm run start --prefix backend",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --prefix backend"
   }
 }

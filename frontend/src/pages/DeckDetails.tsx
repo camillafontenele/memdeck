@@ -187,6 +187,22 @@ function DeckDetails() {
     );
   }
 
+  async function handleDeleteDeck() {
+    if (!deckId) {
+      throw new Error("missing-deck-id");
+    }
+
+    const response = await authenticatedFetch(`/decks/${deckId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("delete-deck");
+    }
+
+    navigate("/dashboard");
+  }
+
   return (
     <main className="min-h-screen bg-background px-4 py-5 pb-24">
       <div className="mx-auto max-w-md">
@@ -221,6 +237,7 @@ function DeckDetails() {
           onEdit={() => setIsEditing(true)}
           onCancel={() => setIsEditing(false)}
           onSave={handleSaveDeck}
+          onDelete={handleDeleteDeck}
         />
 
         <SurfaceCard className="mb-6 shadow-sm">
@@ -285,6 +302,7 @@ function DeckSummary({
   onEdit,
   onCancel,
   onSave,
+  onDelete,
 }: {
   deck: Deck | null;
   deckName: string;
@@ -294,6 +312,7 @@ function DeckSummary({
   onEdit: () => void;
   onCancel: () => void;
   onSave: (name: string, description: string) => Promise<boolean>;
+  onDelete: () => Promise<void>;
 }) {
   const [editedName, setEditedName] = useState(deckName);
   const [editedDescription, setEditedDescription] = useState(
@@ -301,6 +320,9 @@ function DeckSummary({
   );
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   function handleEdit() {
     setEditedName(deckName);
@@ -314,6 +336,25 @@ function DeckSummary({
     setEditedDescription(deck?.description ?? "");
     setError("");
     onCancel();
+  }
+
+  function handleOpenDeleteDialog() {
+    setDeleteError("");
+    setIsDeleteDialogOpen(true);
+  }
+
+  async function handleDelete() {
+    if (isDeleting) return;
+
+    setDeleteError("");
+    setIsDeleting(true);
+
+    try {
+      await onDelete();
+    } catch {
+      setDeleteError("Não foi possível excluir o baralho. Tente novamente.");
+      setIsDeleting(false);
+    }
   }
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
@@ -407,10 +448,32 @@ function DeckSummary({
               </Button>
             </>
           ) : (
-            <Button variant="outline" size="sm" onClick={handleEdit}>
-              <Pencil className="size-4" strokeWidth={2.5} />
-              Editar
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Ações do baralho"
+                  >
+                    <MoreVertical className="size-5" strokeWidth={2.5} />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={handleEdit}>
+                  <Pencil />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger"
+                  onClick={handleOpenDeleteDialog}
+                >
+                  <Trash2 />
+                  Excluir
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </CardAction>
       </CardHeader>
@@ -419,6 +482,45 @@ function DeckSummary({
         <Info icon={<LibraryBig />} text={`${cardCount} cards`} />
         <Info icon={<CalendarDays />} text={`Criado em ${formattedDate}`} />
       </CardContent>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) setIsDeleteDialogOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogTitle>Excluir baralho?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza de que deseja excluir este baralho? Todos os
+            flashcards e históricos de revisão serão excluídos permanentemente
+            e essa ação não poderá ser desfeita.
+          </AlertDialogDescription>
+          {deleteError && (
+            <p className="mt-4 text-body text-danger" role="alert">
+              {deleteError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Excluindo..." : "Excluir baralho"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SurfaceCard>
   );
 }

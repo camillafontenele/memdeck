@@ -3,19 +3,26 @@ import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Bell,
-  ChevronRight,
   Compass,
   Flame,
   House,
   Layers3,
   LibraryBig,
   Menu,
+  Trash2,
   UserRound,
   Zap,
 } from "lucide-react";
 import { authenticatedFetch } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Card as SurfaceCard, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import memDeckLogo from "@/assets/images/logos/memdeck-app-icon.svg";
 
 type Deck = {
@@ -58,6 +65,20 @@ function Dashboard() {
 
     loadDecks();
   }, []);
+
+  async function handleDeleteDeck(deckId: string) {
+    const response = await authenticatedFetch(`/decks/${deckId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("delete-deck");
+    }
+
+    setDecks((currentDecks) =>
+      currentDecks.filter((deck) => deck.id !== deckId),
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background px-4 py-3 pb-24 text-foreground">
@@ -145,6 +166,7 @@ function Dashboard() {
                   key={deck.id}
                   deck={deck}
                   onOpen={() => navigate(`/decks/${deck.id}`)}
+                  onDelete={handleDeleteDeck}
                 />
               ))}
             </div>
@@ -212,28 +234,112 @@ function StatCard({
   );
 }
 
-function DeckCard({ deck, onOpen }: { deck: Deck; onOpen: () => void }) {
+function DeckCard({
+  deck,
+  onOpen,
+  onDelete,
+}: {
+  deck: Deck;
+  onOpen: () => void;
+  onDelete: (deckId: string) => Promise<void>;
+}) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  function handleOpenDeleteDialog() {
+    setDeleteError("");
+    setIsDeleteDialogOpen(true);
+  }
+
+  async function handleDelete() {
+    if (isDeleting) return;
+
+    setDeleteError("");
+    setIsDeleting(true);
+
+    try {
+      await onDelete(deck.id);
+    } catch {
+      setDeleteError("Não foi possível excluir o baralho. Tente novamente.");
+      setIsDeleting(false);
+    }
+  }
+
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex w-full items-center gap-3 rounded-xl bg-card px-4 py-3 text-left shadow-sm ring-1 ring-foreground/10 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      aria-label={`Abrir baralho ${deck.name}`}
-    >
-      <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <Layers3 className="size-6" strokeWidth={2.5} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-h3">{deck.name}</span>
-        <span className="mt-1 block line-clamp-2 text-body text-muted-foreground">
-          {deck.description || "Sem descrição."}
-        </span>
-      </span>
-      <ChevronRight
-        className="size-5 shrink-0 text-muted-foreground"
-        strokeWidth={2.5}
-      />
-    </button>
+    <>
+      <SurfaceCard size="sm" className="shadow-sm">
+        <CardContent className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Abrir baralho ${deck.name}`}
+          >
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Layers3 className="size-6" strokeWidth={2.5} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-h3">{deck.name}</span>
+              <span className="mt-1 block line-clamp-2 text-body text-muted-foreground">
+                {deck.description || "Sem descrição."}
+              </span>
+            </span>
+          </button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={`Excluir baralho ${deck.name}`}
+            onClick={handleOpenDeleteDialog}
+            disabled={isDeleting}
+            className="shrink-0 text-danger hover:bg-danger/10 hover:text-danger"
+          >
+            <Trash2 className="size-5" strokeWidth={2.5} />
+          </Button>
+        </CardContent>
+      </SurfaceCard>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) setIsDeleteDialogOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogTitle>Excluir baralho?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza de que deseja excluir este baralho? Todos os
+            flashcards e históricos de revisão serão excluídos permanentemente
+            e essa ação não poderá ser desfeita.
+          </AlertDialogDescription>
+          {deleteError && (
+            <p className="mt-4 text-body text-danger" role="alert">
+              {deleteError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Excluindo..." : "Excluir baralho"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
