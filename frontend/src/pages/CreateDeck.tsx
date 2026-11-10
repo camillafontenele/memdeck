@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { API_URL } from "../services/api";
+import { authenticatedFetch } from "../services/api";
 import { Button } from "@/components/ui/button";
 
 function CreateDeck() {
@@ -19,13 +19,10 @@ function CreateDeck() {
     try {
       setIsLoading(true);
 
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(`${API_URL}/decks`, {
+      const response = await authenticatedFetch("/decks", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name,

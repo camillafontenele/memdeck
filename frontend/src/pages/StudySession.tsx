@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { API_URL } from "../services/api";
+import { authenticatedFetch } from "../services/api";
 import { Button } from "@/components/ui/button";
 
 import { Frown, Meh, Smile, Laugh } from "lucide-react";
@@ -32,15 +32,8 @@ function StudySession() {
       setLoadError("");
 
       try {
-        const token = localStorage.getItem("token");
-
-        const response = await fetch(
-          `${API_URL}/decks/${deckId}/reviews/available?mode=${mode}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
+        const response = await authenticatedFetch(
+          `/decks/${deckId}/reviews/available?mode=${mode}`,
         );
 
         if (!response.ok) {
@@ -106,15 +99,12 @@ function StudySession() {
     setIsReviewing(true);
 
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(
-        `${API_URL}/cards/${currentCard.id}/reviews`,
+      const response = await authenticatedFetch(
+        `/cards/${currentCard.id}/reviews`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             rating,

@@ -14,7 +14,7 @@ import {
   Plus,
   UserRound,
 } from "lucide-react";
-import { API_URL } from "../services/api";
+import { authenticatedFetch } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -56,16 +56,9 @@ function DeckDetails() {
     async function loadDeckData() {
       try {
         setLoadError("");
-        const token = localStorage.getItem("token");
-
-        const headers: Record<string, string> = {};
-
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
         const [cardsResponse, decksResponse] = await Promise.all([
-          fetch(`${API_URL}/decks/${deckId}/cards`, { headers }),
-          fetch(`${API_URL}/decks`, { headers }),
+          authenticatedFetch(`/decks/${deckId}/cards`),
+          authenticatedFetch("/decks"),
         ]);
 
         if (!cardsResponse.ok) throw new Error("cards");
@@ -118,18 +111,11 @@ function DeckDetails() {
     if (!deckId) return false;
 
     try {
-      const token = localStorage.getItem("token");
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${API_URL}/decks/${deckId}`, {
+      const response = await authenticatedFetch(`/decks/${deckId}`, {
         method: "PATCH",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ name, description }),
       });
 

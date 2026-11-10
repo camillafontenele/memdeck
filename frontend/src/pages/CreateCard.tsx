@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { API_URL } from "../services/api";
+import { authenticatedFetch } from "../services/api";
 import { Button } from "@/components/ui/button";
 
 function CreateCard() {
@@ -22,13 +22,10 @@ function CreateCard() {
     try {
       setIsLoading(true);
 
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(`${API_URL}/decks/${deckId}/cards`, {
+      const response = await authenticatedFetch(`/decks/${deckId}/cards`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           front,

@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import memDeckLogo from "@/assets/images/logos/memdeck-logo-principal.svg";
-import googleLogo from "@/assets/images/logos/logo-google.webp";
 import { Eye, EyeOff } from "lucide-react";
 
 function Login() {
@@ -111,11 +110,6 @@ function Login() {
               </button>
             </div>
 
-            <div className="flex justify-end">
-              <Button type="button" variant="text" className="font-semibold">
-                Esqueceu a senha?
-              </Button>
-            </div>
           </div>
 
           {error && <p className="text-body text-danger">{error}</p>}
@@ -128,17 +122,6 @@ function Login() {
             {isLoading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
-
-        <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-sm text-muted-foreground">ou</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-
-        <Button type="button" variant="outline" className="w-full">
-          <img src={googleLogo} alt="Google Logo" className="h-5 w-5 mr-2" />
-          Continuar com Google
-        </Button>
 
         <p className="mt-6 text-center text-body text-muted-foreground">
           Não tem uma conta?{" "}

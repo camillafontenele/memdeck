@@ -13,7 +13,7 @@ import {
   UserRound,
   Zap,
 } from "lucide-react";
-import { API_URL } from "../services/api";
+import { authenticatedFetch } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Card as SurfaceCard, CardContent } from "@/components/ui/card";
 import memDeckLogo from "@/assets/images/logos/memdeck-app-icon.svg";
@@ -35,14 +35,7 @@ function Dashboard() {
     async function loadDecks() {
       try {
         setLoadError("");
-        const token = localStorage.getItem("token");
-        const headers: Record<string, string> = {};
-
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
-
-        const response = await fetch(`${API_URL}/decks`, { headers });
+        const response = await authenticatedFetch("/decks");
 
         if (!response.ok) {
           throw new Error("decks");

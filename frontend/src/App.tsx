@@ -23,11 +23,46 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/decks/new" element={<CreateDeck />} />
-        <Route path="/decks/:deckId" element={<DeckDetails />} />
-        <Route path="/decks/:deckId/cards/new" element={<CreateCard />} />
-        <Route path="/decks/:deckId/study" element={<StudyMode />} />
-        <Route path="/decks/:deckId/study/:mode" element={<StudySession />} />
+        <Route
+          path="/decks/new"
+          element={
+            <ProtectedRoute>
+              <CreateDeck />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/decks/:deckId"
+          element={
+            <ProtectedRoute>
+              <DeckDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/decks/:deckId/cards/new"
+          element={
+            <ProtectedRoute>
+              <CreateCard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/decks/:deckId/study"
+          element={
+            <ProtectedRoute>
+              <StudyMode />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/decks/:deckId/study/:mode"
+          element={
+            <ProtectedRoute>
+              <StudySession />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
