@@ -38,6 +38,13 @@ export async function deckRoutes(app: FastifyInstance) {
               createdAt: { type: "string" },
             },
           },
+          400: {
+            description: "Dados invÃ¡lidos",
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
         },
       },
     },
@@ -49,9 +56,15 @@ export async function deckRoutes(app: FastifyInstance) {
         email: string;
       };
 
+      const name = body.name.trim();
+
+      if (!name) {
+        return reply.status(400).send({ message: "Nome do baralho é obrigatório" });
+      }
+
       const deck = await prisma.deck.create({
         data: {
-          name: body.name,
+          name,
           description: body.description,
           userId: user.sub,
         },
@@ -156,6 +169,11 @@ export async function deckRoutes(app: FastifyInstance) {
               message: { type: "string" },
             },
           },
+          400: {
+            description: "Dados inválidos",
+            type: "object",
+            properties: { message: { type: "string" } },
+          },
         },
       },
     },
@@ -163,6 +181,11 @@ export async function deckRoutes(app: FastifyInstance) {
       const { deckId } = request.params as { deckId: string };
       const body = request.body as { name: string; description: string };
       const user = request.user as { sub: string; email: string };
+      const name = body.name.trim();
+
+      if (!name) {
+        return reply.status(400).send({ message: "Nome do baralho é obrigatório" });
+      }
 
       const deck = await prisma.deck.findFirst({
         where: {
@@ -178,7 +201,7 @@ export async function deckRoutes(app: FastifyInstance) {
       const updatedDeck = await prisma.deck.update({
         where: { id: deck.id },
         data: {
-          name: body.name,
+          name,
           description: body.description,
         },
       });

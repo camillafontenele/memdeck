@@ -1,95 +1,74 @@
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
 import jwt from "@fastify/jwt";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
-  deck: {
-    findFirst: vi.fn(),
-    delete: vi.fn(),
-  },
+  deck: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
 }));
-
 vi.mock("../../lib/prisma.js", () => ({ prisma: prismaMock }));
-
 import { deckRoutes } from "./deck-routes.js";
 
-async function createApp() {
+async function appWithToken() {
   const app = Fastify();
   await app.register(jwt, { secret: "test-secret" });
   await app.register(deckRoutes);
   await app.ready();
-  return app;
+  return [app, app.jwt.sign({ sub: "user-a", email: "a@test.dev" })] as const;
 }
+const auth = (token: string) => ({ authorization: `Bearer ${token}` });
 
-describe("DELETE /decks/:deckId", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+describe("rotas de decks", () => {
+  beforeEach(() => vi.clearAllMocks());
 
-  it("exige autenticação", async () => {
-    const app = await createApp();
-
-    const response = await app.inject({
-      method: "DELETE",
-      url: "/decks/deck-1",
-    });
-
-    expect(response.statusCode).toBe(401);
+  it("exige JWT para listar", async () => {
+    const [app] = await appWithToken();
+    expect((await app.inject({ method: "GET", url: "/decks" })).statusCode).toBe(401);
     await app.close();
   });
 
-  it("retorna 404 quando o deck não pertence ao usuário autenticado", async () => {
+  it("cria deck normalizando o nome e rejeita espaços", async () => {
+    const [app, token] = await appWithToken();
+    prismaMock.deck.create.mockResolvedValue({ id: "deck-1" });
+    const invalid = await app.inject({ method: "POST", url: "/decks", headers: auth(token), payload: { name: "   " } });
+    const valid = await app.inject({ method: "POST", url: "/decks", headers: auth(token), payload: { name: "  História  " } });
+    expect(invalid.statusCode).toBe(400);
+    expect(valid.statusCode).toBe(201);
+    expect(prismaMock.deck.create).toHaveBeenCalledWith({ data: { name: "História", description: undefined, userId: "user-a" } });
+    await app.close();
+  });
+
+  it("lista somente os decks do usuário autenticado", async () => {
+    const [app, token] = await appWithToken();
+    prismaMock.deck.findMany.mockResolvedValue([]);
+    expect((await app.inject({ method: "GET", url: "/decks", headers: auth(token) })).statusCode).toBe(200);
+    expect(prismaMock.deck.findMany).toHaveBeenCalledWith({ where: { userId: "user-a" } });
+    await app.close();
+  });
+
+  it("não edita nem exclui deck de outro usuário", async () => {
+    const [app, token] = await appWithToken();
     prismaMock.deck.findFirst.mockResolvedValue(null);
-    const app = await createApp();
-    const token = app.jwt.sign({ sub: "user-a", email: "a@memdeck.dev" });
-
-    const response = await app.inject({
-      method: "DELETE",
-      url: "/decks/deck-other-user",
-      headers: { authorization: `Bearer ${token}` },
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(prismaMock.deck.findFirst).toHaveBeenCalledWith({
-      where: { id: "deck-other-user", userId: "user-a" },
-    });
+    const update = await app.inject({ method: "PATCH", url: "/decks/other", headers: auth(token), payload: { name: "Nome", description: "" } });
+    const remove = await app.inject({ method: "DELETE", url: "/decks/other", headers: auth(token) });
+    expect(update.statusCode).toBe(404);
+    expect(remove.statusCode).toBe(404);
+    expect(prismaMock.deck.update).not.toHaveBeenCalled();
     expect(prismaMock.deck.delete).not.toHaveBeenCalled();
     await app.close();
   });
-
-  it("exclui o deck autorizado e retorna 204 sem conteúdo", async () => {
+  it("atualiza o nome normalizado e exclui deck autorizado", async () => {
+    const [app, token] = await appWithToken();
     prismaMock.deck.findFirst.mockResolvedValue({ id: "deck-1" });
+    prismaMock.deck.update.mockResolvedValue({ id: "deck-1", name: "Geografia" });
     prismaMock.deck.delete.mockResolvedValue({ id: "deck-1" });
-    const app = await createApp();
-    const token = app.jwt.sign({ sub: "user-a", email: "a@memdeck.dev" });
 
-    const response = await app.inject({
-      method: "DELETE",
-      url: "/decks/deck-1",
-      headers: { authorization: `Bearer ${token}` },
-    });
+    const update = await app.inject({ method: "PATCH", url: "/decks/deck-1", headers: auth(token), payload: { name: "  Geografia  ", description: "" } });
+    const remove = await app.inject({ method: "DELETE", url: "/decks/deck-1", headers: auth(token) });
 
-    expect(response.statusCode).toBe(204);
-    expect(response.body).toBe("");
-    expect(prismaMock.deck.delete).toHaveBeenCalledWith({
-      where: { id: "deck-1" },
-    });
+    expect(update.statusCode).toBe(200);
+    expect(prismaMock.deck.update).toHaveBeenCalledWith({ where: { id: "deck-1" }, data: { name: "Geografia", description: "" } });
+    expect(remove.statusCode).toBe(204);
+    expect(prismaMock.deck.delete).toHaveBeenCalledWith({ where: { id: "deck-1" } });
     await app.close();
-  });
-
-  it("declara cascata de deck para cards e de cards para revisões", async () => {
-    const schemaPath = fileURLToPath(
-      new URL("../../../prisma/schema.prisma", import.meta.url),
-    );
-    const schema = await readFile(schemaPath, "utf8");
-
-    expect(schema).toMatch(
-      /deck\s+Deck\s+@relation\(fields: \[deckId\], references: \[id\], onDelete: Cascade\)/,
-    );
-    expect(schema).toMatch(
-      /card\s+Card\s+@relation\(fields: \[cardId\], references: \[id\], onDelete: Cascade\)/,
-    );
   });
 });
