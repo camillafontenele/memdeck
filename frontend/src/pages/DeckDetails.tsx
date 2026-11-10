@@ -12,11 +12,26 @@ import {
   Pencil,
   Play,
   Plus,
+  Trash2,
   UserRound,
 } from "lucide-react";
 import { authenticatedFetch } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Card as SurfaceCard,
   CardAction,
@@ -133,6 +148,45 @@ function DeckDetails() {
     }
   }
 
+  async function handleSaveCard(
+    cardId: string,
+    front: string,
+    back: string,
+  ) {
+    const response = await authenticatedFetch(`/cards/${cardId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ front, back }),
+    });
+
+    if (!response.ok) {
+      throw new Error("update-card");
+    }
+
+    const updatedCard: Flashcard = await response.json();
+    setCards((currentCards) =>
+      currentCards.map((card) =>
+        card.id === updatedCard.id ? updatedCard : card,
+      ),
+    );
+  }
+
+  async function handleDeleteCard(cardId: string) {
+    const response = await authenticatedFetch(`/cards/${cardId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("delete-card");
+    }
+
+    setCards((currentCards) =>
+      currentCards.filter((card) => card.id !== cardId),
+    );
+  }
+
   return (
     <main className="min-h-screen bg-background px-4 py-5 pb-24">
       <div className="mx-auto max-w-md">
@@ -200,7 +254,14 @@ function DeckDetails() {
 
           <div className="space-y-3">
             {cards.length ? (
-              cards.map((card) => <CardRow key={card.id} card={card} />)
+              cards.map((card) => (
+                <CardRow
+                  key={card.id}
+                  card={card}
+                  onSave={handleSaveCard}
+                  onDelete={handleDeleteCard}
+                />
+              ))
             ) : (
               <EmptyCards
                 onAdd={() => navigate(`/decks/${deckId}/cards/new`)}
@@ -373,28 +434,224 @@ function Info({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-function CardRow({ card }: { card: Flashcard }) {
+function CardRow({
+  card,
+  onSave,
+  onDelete,
+}: {
+  card: Flashcard;
+  onSave: (cardId: string, front: string, back: string) => Promise<void>;
+  onDelete: (cardId: string) => Promise<void>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [front, setFront] = useState(card.front);
+  const [back, setBack] = useState(card.back);
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  function handleEdit() {
+    setFront(card.front);
+    setBack(card.back);
+    setError("");
+    setIsEditing(true);
+  }
+
+  function handleCancel() {
+    setFront(card.front);
+    setBack(card.back);
+    setError("");
+    setIsEditing(false);
+  }
+
+  function handleOpenDeleteDialog() {
+    setDeleteError("");
+    setIsDeleteDialogOpen(true);
+  }
+
+  async function handleDelete() {
+    if (isDeleting) return;
+
+    setDeleteError("");
+    setIsDeleting(true);
+
+    try {
+      await onDelete(card.id);
+      setIsDeleteDialogOpen(false);
+    } catch {
+      setDeleteError("Não foi possível excluir o flashcard. Tente novamente.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (isSaving) return;
+
+    const trimmedFront = front.trim();
+    const trimmedBack = back.trim();
+
+    if (!trimmedFront || !trimmedBack) {
+      setError("Preencha a frente e o verso do flashcard.");
+      return;
+    }
+
+    setError("");
+    setIsSaving(true);
+
+    try {
+      await onSave(card.id, trimmedFront, trimmedBack);
+      setIsEditing(false);
+    } catch {
+      setError("Não foi possível salvar as alterações. Tente novamente.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <SurfaceCard size="sm" className="shadow-sm">
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-2">
+              <label htmlFor={`card-${card.id}-front`} className="text-body font-semibold">
+                Frente
+              </label>
+              <Textarea
+                id={`card-${card.id}-front`}
+                value={front}
+                onChange={(event) => setFront(event.target.value)}
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? `card-${card.id}-error` : undefined}
+                disabled={isSaving}
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor={`card-${card.id}-back`} className="text-body font-semibold">
+                Verso
+              </label>
+              <Textarea
+                id={`card-${card.id}-back`}
+                value={back}
+                onChange={(event) => setBack(event.target.value)}
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? `card-${card.id}-error` : undefined}
+                disabled={isSaving}
+                rows={3}
+              />
+            </div>
+            {error && (
+              <p id={`card-${card.id}-error`} className="text-body text-danger" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={handleCancel}
+                disabled={isSaving}
+              >
+                Cancelar
+              </Button>
+              <Button size="sm" type="submit" disabled={isSaving}>
+                {isSaving ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </SurfaceCard>
+    );
+  }
+
   return (
-    <SurfaceCard size="sm" className="shadow-sm">
-      <CardContent className="grid grid-cols-[1fr_1px_1fr_auto] items-center gap-3">
-        <div className="min-w-0">
-          <p className="text-caption text-muted-foreground">Frente</p>
-          <h3 className="mt-1 truncate text-h3">{card.front}</h3>
-        </div>
-        <div className="h-12 bg-border" />
-        <div className="min-w-0">
-          <p className="text-caption text-muted-foreground">Verso</p>
-          <p className="mt-1 truncate text-h3">{card.back}</p>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={`Opções do card ${card.front}`}
-        >
-          <MoreVertical className="size-5" strokeWidth={2.5} />
-        </Button>
-      </CardContent>
-    </SurfaceCard>
+    <>
+      <SurfaceCard size="sm" className="shadow-sm">
+        <CardContent className="grid grid-cols-[1fr_1px_1fr_auto] items-center gap-3">
+          <div className="min-w-0">
+            <p className="text-caption text-muted-foreground">Frente</p>
+            <h3 className="mt-1 truncate text-h3">{card.front}</h3>
+          </div>
+          <div className="h-12 bg-border" />
+          <div className="min-w-0">
+            <p className="text-caption text-muted-foreground">Verso</p>
+            <p className="mt-1 truncate text-h3">{card.back}</p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Ações do card ${card.front}`}
+                >
+                  <MoreVertical className="size-5" strokeWidth={2.5} />
+                </Button>
+              }
+            />
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={handleEdit}>
+                <Pencil />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger"
+                onClick={handleOpenDeleteDialog}
+              >
+                <Trash2 />
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </CardContent>
+      </SurfaceCard>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) setIsDeleteDialogOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogTitle>Excluir flashcard?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza de que deseja excluir este flashcard? Essa ação também
+            excluirá permanentemente seu histórico de revisões e não poderá ser
+            desfeita.
+          </AlertDialogDescription>
+          {deleteError && (
+            <p className="mt-4 text-body text-danger" role="alert">
+              {deleteError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Excluindo..." : "Excluir flashcard"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
