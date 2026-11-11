@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { authenticatedFetch } from "../services/api";
 import { Button } from "@/components/ui/button";
 
-import { Frown, Meh, Smile, Laugh } from "lucide-react";
+import { Frown, Meh, Smile, Laugh, X } from "lucide-react";
 
 type Card = {
   id: string;
@@ -131,7 +131,20 @@ function StudySession() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-md px-4 py-6">
-      <h1 className="mb-6 text-h2">Sessão de estudo</h1>
+      <header className="mb-6 flex items-center justify-between gap-3">
+        <h1 className="text-h2">Sessão de estudo</h1>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label="Sair da sessão e voltar ao baralho"
+          disabled={isReviewing}
+          onClick={() => navigate(`/decks/${deckId}`)}
+        >
+          <X className="size-5" aria-hidden="true" />
+          Sair
+        </Button>
+      </header>
 
       {sessionFinished ? (
         <section className="space-y-6">

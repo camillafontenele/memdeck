@@ -1,19 +1,15 @@
+import BottomNavigation from "@/components/BottomNavigation";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
-  BarChart3,
   CalendarDays,
-  Compass,
-  House,
-  Layers3,
   LibraryBig,
   MoreVertical,
   Pencil,
   Play,
   Plus,
   Trash2,
-  UserRound,
 } from "lucide-react";
 import { authenticatedFetch } from "../services/api";
 import { Button } from "@/components/ui/button";
@@ -288,7 +284,7 @@ function DeckDetails() {
         </section>
       </div>
 
-      <BottomNavigation onHome={() => navigate("/dashboard")} />
+      <BottomNavigation />
     </main>
   );
 }
@@ -769,49 +765,6 @@ function EmptyCards({ onAdd }: { onAdd: () => void }) {
         </Button>
       </CardContent>
     </SurfaceCard>
-  );
-}
-
-function BottomNavigation({ onHome }: { onHome: () => void }) {
-  return (
-    <nav
-      aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 border-t bg-card px-4 py-2"
-    >
-      <div className="mx-auto grid max-w-md grid-cols-5">
-        <NavItem icon={<House />} label="Início" onClick={onHome} />
-        <NavItem icon={<Layers3 />} label="Baralhos" active />
-        <NavItem icon={<Compass />} label="Explorar" />
-        <NavItem icon={<BarChart3 />} label="Estatísticas" />
-        <NavItem icon={<UserRound />} label="Perfil" />
-      </div>
-    </nav>
-  );
-}
-
-function NavItem({
-  icon,
-  label,
-  active = false,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={onClick}
-      className={`h-auto flex-col gap-1 px-1 py-1 text-caption ${active ? "text-primary" : "text-muted-foreground"}`}
-    >
-      <span className={active ? "rounded-xl bg-primary/10 p-2" : "p-2"}>
-        {icon}
-      </span>
-      {label}
-    </Button>
   );
 }
 

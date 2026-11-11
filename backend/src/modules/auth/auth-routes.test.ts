@@ -23,6 +23,37 @@ async function appWithAuthRoutes() {
 describe("rotas de autenticacao", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it.each([undefined, "Bearer invalid"])("rejeita perfil sem JWT valido: %s", async (authorization) => {
+    const app = await appWithAuthRoutes();
+    try {
+      const response = await app.inject({ method: "GET", url: "/auth/me", headers: authorization ? { authorization } : {} });
+      expect(response.statusCode).toBe(401);
+      expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
+    } finally { await app.close(); }
+  });
+
+  it("retorna somente dados publicos do usuario do token", async () => {
+    const app = await appWithAuthRoutes();
+    try {
+      prismaMock.user.findUnique.mockResolvedValue({ id: "user-a", name: "Ana", email: "ana@test.dev", passwordHash: "private" });
+      const token = app.jwt.sign({ sub: "user-a" });
+      const response = await app.inject({ method: "GET", url: "/auth/me?userId=user-b", headers: { authorization: `Bearer ${token}` } });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ id: "user-a", name: "Ana", email: "ana@test.dev" });
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({ where: { id: "user-a" }, select: { id: true, name: true, email: true } });
+    } finally { await app.close(); }
+  });
+
+  it("rejeita perfil de usuario removido", async () => {
+    const app = await appWithAuthRoutes();
+    try {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      const token = app.jwt.sign({ sub: "removed" });
+      const response = await app.inject({ method: "GET", url: "/auth/me", headers: { authorization: `Bearer ${token}` } });
+      expect(response.statusCode).toBe(401);
+    } finally { await app.close(); }
+  });
+
   it("impede cadastro com e-mail ja utilizado", async () => {
     const app = await appWithAuthRoutes();
     prismaMock.user.findUnique.mockResolvedValue({ id: "user-1" });

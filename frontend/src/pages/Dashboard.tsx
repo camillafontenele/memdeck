@@ -1,16 +1,12 @@
+import BottomNavigation from "@/components/BottomNavigation";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  Bell,
-  Compass,
   Flame,
-  House,
   Layers3,
   LibraryBig,
-  Menu,
   Trash2,
-  UserRound,
   Zap,
 } from "lucide-react";
 import { authenticatedFetch } from "../services/api";
@@ -129,14 +125,8 @@ function Dashboard() {
   return (
     <main className="min-h-screen bg-background px-4 py-3 pb-24 text-foreground">
       <div className="mx-auto max-w-md">
-        <header className="mb-5 flex items-center justify-between">
-          <span aria-hidden="true" className="rounded-xl p-2 text-foreground">
-            <Menu className="size-7" strokeWidth={2.8} />
-          </span>
+        <header className="mb-5 flex items-center justify-center">
           <img src={memDeckLogo} alt="MemDeck" className="h-9 w-auto" />
-          <span aria-hidden="true" className="rounded-xl p-2 text-foreground">
-            <Bell className="size-7" strokeWidth={2.6} />
-          </span>
         </header>
 
         <section className="mb-5">
@@ -262,18 +252,7 @@ function Dashboard() {
         </section>
       </div>
 
-      <nav
-        aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 border-t bg-card/95 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur"
-      >
-        <div className="mx-auto grid max-w-md grid-cols-5">
-          <NavItem icon={<House />} label="Início" active />
-          <NavItem icon={<LibraryBig />} label="Baralhos" />
-          <NavItem icon={<Compass />} label="Explorar" />
-          <NavItem icon={<BarChart3 />} label="Estatísticas" />
-          <NavItem icon={<UserRound />} label="Perfil" />
-        </div>
-      </nav>
+      <BottomNavigation />
     </main>
   );
 }
@@ -412,25 +391,6 @@ function DeckCard({
         </AlertDialogContent>
       </AlertDialog>
     </>
-  );
-}
-
-function NavItem({
-  icon,
-  label,
-  active = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <span
-      className={`flex flex-col items-center gap-1 py-1 text-caption font-bold ${active ? "text-primary" : "text-muted-foreground"}`}
-    >
-      <span className="[&_svg]:size-5 [&_svg]:stroke-[2.8]">{icon}</span>
-      {label}
-    </span>
   );
 }
 

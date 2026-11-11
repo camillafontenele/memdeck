@@ -2,8 +2,39 @@ import type { FastifyInstance } from "fastify";
 import argon2 from "argon2";
 import { prisma } from "../../lib/prisma.js";
 import { google } from "googleapis";
+import { authGuard } from "./auth-guard.js";
 
 export async function authRoutes(app: FastifyInstance) {
+  app.get("/auth/me", {
+    preHandler: [authGuard],
+    schema: {
+      tags: ["Auth"],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            name: { type: "string" },
+            email: { type: "string" },
+          },
+        },
+        401: {
+          type: "object",
+          properties: { message: { type: "string" } },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { sub } = request.user as { sub: string };
+    const user = await prisma.user.findUnique({
+      where: { id: sub },
+      select: { id: true, name: true, email: true },
+    });
+    if (!user) return reply.status(401).send({ message: "Sessão inválida." });
+    return user;
+  });
+
   const tokenExpiresIn = process.env.JWT_EXPIRES_IN ?? "7d";
 
   app.post(

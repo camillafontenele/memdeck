@@ -11,6 +11,10 @@ export const API_URL = (configuredApiUrl ?? "http://localhost:3333").replace(
 
 const TOKEN_STORAGE_KEY = "token";
 
+export function clearSession() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+}
+
 export async function authenticatedFetch(
   path: string,
   options: RequestInit = {},
@@ -28,7 +32,7 @@ export async function authenticatedFetch(
   });
 
   if (response.status === 401) {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    clearSession();
 
     if (window.location.pathname !== "/login") {
       window.location.replace("/login");
