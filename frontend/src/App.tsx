@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -10,10 +10,15 @@ import CreateCard from "./pages/CreateCard";
 import StudyMode from "./pages/StudyMode";
 import StudySession from "./pages/StudySession";
 
+function InitialRedirect() {
+  return <Navigate to={localStorage.getItem("token") ? "/dashboard" : "/login"} replace />;
+}
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<InitialRedirect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

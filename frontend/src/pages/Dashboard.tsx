@@ -41,6 +41,7 @@ function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState("");
+  const [summaryVersion, setSummaryVersion] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -72,7 +73,9 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
+    let active = true;
     async function loadSummary() {
+      setIsSummaryLoading(true);
       try {
         setSummaryError("");
         const response = await authenticatedFetch("/dashboard/summary");
@@ -96,17 +99,19 @@ function Dashboard() {
           throw new Error("invalid-dashboard-summary-payload");
         }
 
-        setSummary(data as DashboardSummary);
+        if (active) setSummary(data as DashboardSummary);
       } catch {
+        if (!active) return;
         setSummary(null);
         setSummaryError("Não foi possível carregar seu resumo de estudos.");
       } finally {
-        setIsSummaryLoading(false);
+        if (active) setIsSummaryLoading(false);
       }
     }
 
     loadSummary();
-  }, []);
+    return () => { active = false; };
+  }, [summaryVersion]);
 
   async function handleDeleteDeck(deckId: string) {
     const response = await authenticatedFetch(`/decks/${deckId}`, {
@@ -120,6 +125,8 @@ function Dashboard() {
     setDecks((currentDecks) =>
       currentDecks.filter((deck) => deck.id !== deckId),
     );
+    setIsSummaryLoading(true);
+    setSummaryVersion((version) => version + 1);
   }
 
   return (
