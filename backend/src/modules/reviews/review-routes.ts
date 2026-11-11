@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import type { ReviewRating } from "./review.js";
 import { calculateNextReview } from "./calculate-next-review.js";
 import { authGuard } from "../auth/auth-guard.js";
+import { isReviewAvailable } from "./review-availability.js";
 
 export async function reviewRoutes(app: FastifyInstance) {
   app.post(
@@ -210,15 +211,9 @@ export async function reviewRoutes(app: FastifyInstance) {
         },
       });
 
-      const availableCards = cards.filter((card) => {
-        const lastReview = card.reviews[0];
-
-        if (!lastReview) {
-          return true;
-        }
-
-        return lastReview.nextReviewAt <= now;
-      });
+      const availableCards = cards.filter((card) =>
+        isReviewAvailable(card.reviews[0], now),
+      );
 
       const limits = {
         ideal: undefined,

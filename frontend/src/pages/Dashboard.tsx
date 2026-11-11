@@ -32,10 +32,19 @@ type Deck = {
   createdAt: string;
 };
 
+type DashboardSummary = {
+  cardsCount: number;
+  dueReviewsCount: number;
+  studyStreakDays: number;
+};
+
 function Dashboard() {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,6 +73,43 @@ function Dashboard() {
     }
 
     loadDecks();
+  }, []);
+
+  useEffect(() => {
+    async function loadSummary() {
+      try {
+        setSummaryError("");
+        const response = await authenticatedFetch("/dashboard/summary");
+
+        if (!response.ok) {
+          throw new Error("dashboard-summary");
+        }
+
+        const data: unknown = await response.json();
+
+        if (
+          !data ||
+          typeof data !== "object" ||
+          !("cardsCount" in data) ||
+          !("dueReviewsCount" in data) ||
+          !("studyStreakDays" in data) ||
+          typeof data.cardsCount !== "number" ||
+          typeof data.dueReviewsCount !== "number" ||
+          typeof data.studyStreakDays !== "number"
+        ) {
+          throw new Error("invalid-dashboard-summary-payload");
+        }
+
+        setSummary(data as DashboardSummary);
+      } catch {
+        setSummary(null);
+        setSummaryError("Não foi possível carregar seu resumo de estudos.");
+      } finally {
+        setIsSummaryLoading(false);
+      }
+    }
+
+    loadSummary();
   }, []);
 
   async function handleDeleteDeck(deckId: string) {
@@ -102,7 +148,6 @@ function Dashboard() {
           </p>
         </section>
 
-        {/* TODO: conectar o resumo de revisões quando a API fornecer esse dado. */}
         <SurfaceCard className="relative mb-5 overflow-hidden bg-primary text-primary-foreground shadow-sm">
           <div className="absolute -right-8 -top-9 size-32 rounded-full bg-card/10" />
           <div className="absolute -bottom-12 right-14 size-28 rounded-full bg-card/10" />
@@ -113,27 +158,54 @@ function Dashboard() {
             />
             <div>
               <p className="text-h2">Revisões</p>
-              <p className="mt-1 text-body text-primary-foreground/80">
-                Dados de revisão em breve.
-              </p>
+              {isSummaryLoading ? (
+                <p className="mt-1 text-body text-primary-foreground/80">
+                  Carregando revisões...
+                </p>
+              ) : summaryError ? (
+                <p className="mt-1 text-body text-primary-foreground/80" role="alert">
+                  {summaryError}
+                </p>
+              ) : (
+                <p className="mt-1 text-body text-primary-foreground/80">
+                  {summary?.dueReviewsCount === 1
+                    ? "1 revisão disponível."
+                    : `${summary?.dueReviewsCount ?? 0} revisões disponíveis.`}
+                </p>
+              )}
             </div>
           </CardContent>
         </SurfaceCard>
 
-        {/* TODO: substituir os indicadores por métricas fornecidas pelo backend. */}
         <section
           className="mb-5 grid grid-cols-3 gap-3"
-          aria-label="Estatísticas temporárias"
+          aria-label="Estatísticas"
         >
           <StatCard
             icon={<Layers3 />}
             value={loadError ? "—" : decks.length}
             label="Baralhos"
           />
-          <StatCard icon={<BarChart3 />} value="—" label="Cards" />
+          <StatCard
+            icon={<BarChart3 />}
+            value={
+              isSummaryLoading
+                ? "…"
+                : summaryError
+                  ? "—"
+                  : (summary?.cardsCount ?? 0)
+            }
+            label="Cards"
+          />
           <StatCard
             icon={<Flame />}
-            value="—"
+            value={
+              isSummaryLoading
+                ? "…"
+                : summaryError
+                  ? "—"
+                  : (summary?.studyStreakDays ?? 0)
+            }
             label="Sequência"
             accent="danger"
           />
@@ -221,7 +293,7 @@ function StatCard({
     <SurfaceCard className="min-h-27 justify-center px-1 text-center shadow-sm">
       <CardContent className="flex flex-col items-center justify-center">
         <span
-          className={`${accent === "danger" ? "text-danger" : "text-primary"} [&>svg]:size-8 [&>svg]:stroke-[3]`}
+          className={`${accent === "danger" ? "text-danger" : "text-primary"} [&>svg]:size-8 [&>svg]:stroke-3`}
         >
           {icon}
         </span>

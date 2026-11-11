@@ -4,6 +4,7 @@ import { deckRoutes } from "./modules/decks/deck-routes.js";
 import { cardRoutes } from "./modules/cards/card-routes.js";
 import { reviewRoutes } from "./modules/reviews/review-routes.js";
 import { authRoutes } from "./modules/auth/auth-routes.js";
+import { dashboardRoutes } from "./modules/dashboard/dashboard-routes.js";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import jwt from "@fastify/jwt";
@@ -90,5 +91,6 @@ app.register(authRoutes);
 app.register(deckRoutes);
 app.register(cardRoutes);
 app.register(reviewRoutes);
+app.register(dashboardRoutes);
 
 await app.listen({ port, host: "0.0.0.0" });
