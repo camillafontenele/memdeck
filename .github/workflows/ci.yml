@@ -28,8 +28,24 @@ jobs:
       - run: npm run build
 
   backend:
-    name: Backend — tests
+    name: Backend — migrations, tests and build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: memdeck
+          POSTGRES_PASSWORD: memdeck_test
+          POSTGRES_DB: memdeck_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U memdeck -d memdeck_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://memdeck:memdeck_test@127.0.0.1:5432/memdeck_test?sslmode=disable
     defaults:
       run:
         working-directory: backend
@@ -41,7 +57,8 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - run: npm run prisma:generate
+      - run: npm run prisma:migrate:deploy
+      - run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
       - run: npm test
       - run: npm run build
-        env:
-          DATABASE_URL: postgresql://user:password@localhost:5432/memdeck?sslmode=require

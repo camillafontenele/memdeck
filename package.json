@@ -12,6 +12,7 @@
     "build:backend": "npm run build --prefix backend",
     "build": "npm run build:frontend && npm run build:backend",
     "start:backend": "npm run start --prefix backend",
-    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --prefix backend"
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --prefix backend",
+    "prisma:generate": "npm run prisma:generate --prefix backend"
   }
 }

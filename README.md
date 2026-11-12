@@ -65,3 +65,20 @@ npm run start:backend
 ```
 
 `prisma:migrate:deploy` permanece um passo explícito de publicação e não é executado pelo build.
+
+O Prisma 7 usa `backend/prisma.config.ts`, descoberto automaticamente pelos scripts
+executados no backend. A configuração carrega `.env` via `dotenv`; a conexão fica
+na configuração, enquanto o provider PostgreSQL permanece no schema. Para gerar
+o client separadamente, execute `npm run prisma:generate` na raiz. Instale também
+as dependências de desenvolvimento na etapa de build (Prisma CLI e TypeScript).
+O runtime precisa das dependências de produção, incluindo `dotenv`, e de `dist`.
+
+As cinco migrations versionadas recriam o schema atual a partir de um banco vazio.
+A CI valida isso em PostgreSQL 17 isolado, aplicando `migrate deploy` e comparando
+o resultado com o schema via `migrate diff --exit-code`.
+Não use `db push` como substituto das migrations no deploy.
+
+Antes de aplicar o histórico em um banco já populado, confira seu histórico de
+migrations: `20260903181826_add_user` adiciona `Deck.userId` obrigatório sem valor
+padrão e falha se houver decks antigos sem proprietário. Nesse cenário, planeje
+o preenchimento dos dados antes do deploy; não altere migrations já aplicadas.
