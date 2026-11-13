@@ -2,6 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="referrer" content="no-referrer" />
+    <!-- Must run before assets, the app, analytics or monitoring. Never move below them. -->
+    <script>
+      if (location.pathname === '/auth/google/return') {
+        const result = location.hash.slice(1);
+        history.replaceState(null, '', location.pathname);
+        try {
+          sessionStorage.removeItem('memdeck.google.return');
+          if (result.length <= 256) sessionStorage.setItem('memdeck.google.return', result);
+        } catch { /* The callback displays a safe error when storage is unavailable. */ }
+      }
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>

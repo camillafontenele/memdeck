@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, LogOut } from "lucide-react";
-import { authenticatedFetch, clearSession } from "../services/api";
+import { clearSession, getAuthenticatedUser } from "../services/api";
 import BottomNavigation from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,10 +21,7 @@ export default function Profile() {
       setLoading(true);
       setError("");
       try {
-        const response = await authenticatedFetch("/auth/me");
-        if (!response.ok) throw new Error("profile");
-        const data = await response.json();
-        if (typeof data?.name !== "string" || typeof data?.email !== "string") throw new Error("profile-payload");
+        const data = await getAuthenticatedUser();
         if (active) setUser(data);
       } catch {
         if (active) setError("Não foi possível carregar seu perfil.");

@@ -9,6 +9,7 @@ import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import jwt from "@fastify/jwt";
 import cors from "@fastify/cors";
+import { safeLogger } from "./modules/auth/auth-security.js";
 
 const jwtSecret = process.env.JWT_SECRET;
 
@@ -34,7 +35,8 @@ const corsOrigins = (configuredCorsOrigins
 ).map((origin) => origin.trim()).filter(Boolean);
 
 const app = Fastify({
-  logger: true,
+  logger: safeLogger,
+  trustProxy: process.env.TRUSTED_PROXIES?.split(",").map(value => value.trim()).filter(Boolean) ?? false,
 });
 
 await app.register(swagger, {

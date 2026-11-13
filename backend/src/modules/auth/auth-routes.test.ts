@@ -104,4 +104,41 @@ describe("rotas de autenticacao", () => {
     expect(app.jwt.verify<{ sub: string }>(response.json().token).sub).toBe("user-1");
     await app.close();
   });
+
+  it("limita cadastros por IP antes de acessar o banco ou calcular hashes", async () => {
+    const app = await appWithAuthRoutes();
+    try {
+      prismaMock.user.findUnique.mockResolvedValue({ id: "exists" });
+      for (let i = 0; i < 5; i++) {
+        expect((await app.inject({ method: "POST", url: "/auth/register", payload: { name: "Ana", email: `ana${i}@test.dev`, password: "segredo" } })).statusCode).toBe(409);
+      }
+      const blocked = await app.inject({ method: "POST", url: "/auth/register", payload: { name: "Ana", email: "next@test.dev", password: "segredo" } });
+      expect(blocked.statusCode).toBe(429);
+      expect(blocked.headers["retry-after"]).toBeDefined();
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(5);
+      expect(argon2Mock.hash).not.toHaveBeenCalled();
+    } finally { await app.close(); }
+  });
+
+  it("limita login por conta mesmo com IPs diferentes", async () => {
+    const app = await appWithAuthRoutes();
+    try {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      for (let i = 0; i < 10; i++) {
+        expect((await app.inject({ method: "POST", url: "/auth/login", remoteAddress: `192.0.2.${i + 1}`, payload: { email: "ana@test.dev", password: "errada" } })).statusCode).toBe(401);
+      }
+      expect((await app.inject({ method: "POST", url: "/auth/login", remoteAddress: "192.0.2.50", payload: { email: "ANA@test.dev", password: "errada" } })).statusCode).toBe(429);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(10);
+    } finally { await app.close(); }
+  });
+
+  it("limita login por IP mesmo com e-mails diferentes e não confia em X-Forwarded-For", async () => {
+    const app = await appWithAuthRoutes();
+    try {
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      for (let i = 0; i < 30; i++) await app.inject({ method: "POST", url: "/auth/login", payload: { email: `ana${i}@test.dev`, password: "errada" } });
+      const response = await app.inject({ method: "POST", url: "/auth/login", headers: { "x-forwarded-for": "203.0.113.9" }, payload: { email: "next@test.dev", password: "errada" } });
+      expect(response.statusCode).toBe(429); expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(30);
+    } finally { await app.close(); }
+  });
 });

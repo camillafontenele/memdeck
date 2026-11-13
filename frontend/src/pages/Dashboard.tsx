@@ -9,7 +9,7 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
-import { authenticatedFetch } from "../services/api";
+import { authenticatedFetch, getAuthenticatedUser } from "../services/api";
 import { Button } from "@/components/ui/button";
 import { Card as SurfaceCard, CardContent } from "@/components/ui/card";
 import {
@@ -42,6 +42,7 @@ function Dashboard() {
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState("");
   const [summaryVersion, setSummaryVersion] = useState(0);
+  const [firstName, setFirstName] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,6 +71,26 @@ function Dashboard() {
     }
 
     loadDecks();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUser() {
+      try {
+        const user = await getAuthenticatedUser();
+        const name = user.name.trim().split(/\s+/)[0];
+
+        if (active && name) setFirstName(name);
+      } catch {
+        // Keep the generic greeting when the user data cannot be loaded.
+      }
+    }
+
+    void loadUser();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -138,7 +159,8 @@ function Dashboard() {
 
         <section className="mb-5">
           <h1 className="text-h1">
-            Olá! <span aria-hidden="true">👋</span>
+            {firstName ? `Olá, ${firstName}!` : "Olá!"}{" "}
+            <span aria-hidden="true">👋</span>
           </h1>
           <p className="mt-0.5 text-body-lg font-semibold text-muted-foreground">
             Vamos estudar hoje?

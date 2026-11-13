@@ -11,8 +11,27 @@ export const API_URL = (configuredApiUrl ?? "http://localhost:3333").replace(
 
 const TOKEN_STORAGE_KEY = "token";
 
+export type AuthenticatedUser = {
+  name: string;
+  email: string;
+};
+
+let cachedUser: AuthenticatedUser | null = null;
+let userRequest: Promise<AuthenticatedUser> | null = null;
+
+function resetUserCache() {
+  cachedUser = null;
+  userRequest = null;
+}
+
 export function clearSession() {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
+  resetUserCache();
+}
+
+export function storeSessionToken(token: string) {
+  resetUserCache();
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
 }
 
 export async function authenticatedFetch(
@@ -40,4 +59,36 @@ export async function authenticatedFetch(
   }
 
   return response;
+}
+
+export async function getAuthenticatedUser(): Promise<AuthenticatedUser> {
+  if (cachedUser) return Promise.resolve(cachedUser);
+
+  userRequest ??= (async () => {
+    const response = await authenticatedFetch("/auth/me");
+
+    if (!response.ok) throw new Error("authenticated-user");
+
+    const data: unknown = await response.json();
+
+    if (
+      !data ||
+      typeof data !== "object" ||
+      !("name" in data) ||
+      !("email" in data) ||
+      typeof data.name !== "string" ||
+      typeof data.email !== "string"
+    ) {
+      throw new Error("invalid-authenticated-user-payload");
+    }
+
+    cachedUser = data as AuthenticatedUser;
+    return cachedUser;
+  })();
+
+  try {
+    return await userRequest;
+  } finally {
+    userRequest = null;
+  }
 }

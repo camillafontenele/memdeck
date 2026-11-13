@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { API_URL } from "../services/api";
+import GoogleLoginButton from '../components/GoogleLoginButton';
+import { API_URL, storeSessionToken } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +42,7 @@ function Login() {
         return;
       }
 
-      localStorage.setItem("token", data.token);
+      storeSessionToken(data.token);
 
       navigate("/dashboard");
     } catch {
@@ -122,6 +123,7 @@ function Login() {
             {isLoading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
+        <GoogleLoginButton />
 
         <p className="mt-6 text-center text-body text-muted-foreground">
           Não tem uma conta?{" "}

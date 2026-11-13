@@ -1,4 +1,5 @@
 import { useState } from "react";
+import GoogleLoginButton from '../components/GoogleLoginButton';
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import memDeckLogo from "@/assets/images/logos/memdeck-logo-principal.svg";
 
-import { API_URL } from "../services/api";
+import { API_URL, storeSessionToken } from "../services/api";
 
 function Register() {
   const [name, setName] = useState("");
@@ -54,7 +55,7 @@ function Register() {
         return;
       }
 
-      localStorage.setItem("token", data.token);
+      storeSessionToken(data.token);
 
       navigate("/dashboard");
     } catch {
@@ -185,6 +186,7 @@ function Register() {
             {isLoading ? "Criando conta..." : "Criar conta"}
           </Button>
         </form>
+        <GoogleLoginButton />
 
         <p className="mt-6 text-center text-body text-muted-foreground">
           Já tem uma conta?{" "}
