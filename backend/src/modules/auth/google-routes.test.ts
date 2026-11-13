@@ -7,7 +7,29 @@ import { digest, randomSecret } from './oauth-store.js';
 import { safeLogger } from './auth-security.js';
 
 const database = vi.hoisted(() => ({ user: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn() } }));
+const oauth = vi.hoisted(() => {
+  const transactions = new Map<string, { value: { browserHash: string; nonce: string; verifier: string; challengeHash: string }; expiresAt: number }>();
+  const deliveries = new Map<string, { value: { challenge: string; userId: string }; expiresAt: number }>();
+  return {
+    reset: () => { transactions.clear(); deliveries.clear(); },
+    createOAuthTransaction: async (state: string, value: { browserHash: string; nonce: string; verifier: string; challengeHash: string }) => {
+      transactions.set(state, { value, expiresAt: Date.now() + 300_000 });
+    },
+    takeOAuthTransaction: async (state: string) => {
+      const entry = transactions.get(state); transactions.delete(state);
+      return entry && entry.expiresAt > Date.now() ? entry.value : undefined;
+    },
+    createOAuthDelivery: async (code: string, value: { challenge: string; userId: string }) => {
+      deliveries.set(code, { value, expiresAt: Date.now() + 60_000 });
+    },
+    takeOAuthDelivery: async (code: string) => {
+      const entry = deliveries.get(code); deliveries.delete(code);
+      return entry && entry.expiresAt > Date.now() ? entry.value : undefined;
+    },
+  };
+});
 vi.mock('../../lib/prisma.js', () => ({ prisma: database }));
+vi.mock('./oauth-repository.js', () => oauth);
 import { authRoutes } from './auth-routes.js';
 
 const keys = generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -33,7 +55,8 @@ function signedToken() {
 }
 
 beforeEach(() => {
-  vi.resetAllMocks();
+  vi.clearAllMocks();
+  oauth.reset();
   apps = []; clients = []; claims = {}; invalidSignature = false; failExchange = false; rejectPkce = false;
   vi.stubEnv('GOOGLE_CLIENT_ID', 'test-client');
   vi.stubEnv('GOOGLE_CLIENT_SECRET', 'test-secret');
@@ -41,7 +64,9 @@ beforeEach(() => {
   vi.stubEnv('FRONTEND_URL', 'https://app.example.com');
   vi.stubEnv('CORS_ORIGIN', 'https://app.example.com');
   vi.stubEnv('NODE_ENV', 'production');
-  database.user.findUnique.mockResolvedValue(null);
+  database.user.findUnique.mockImplementation(({ where }: { where: { googleId?: string; id?: string } }) =>
+    Promise.resolve(where.id === user.id ? user : null),
+  );
   database.user.findFirst.mockResolvedValue(null);
   database.user.create.mockResolvedValue(user);
   tokenExchange = vi.fn(async (options: { codeVerifier: string }) => {
@@ -177,6 +202,11 @@ describe('Google OAuth security', () => {
     const { app } = await setup(); const flow = await begin(app); const code = returned(await callback(app, flow)).get('code')!;
     const results = await Promise.all([exchange(app, code, flow.verifier), exchange(app, code, flow.verifier)]);
     expect(results.map(value => value.statusCode).sort()).toEqual([200, 400]);
+  });
+  it('shares an OAuth flow between separate Fastify instances', async () => {
+    const first = await setup(); const second = await setup(); const flow = await begin(first.app);
+    const code = returned(await callback(second.app, flow)).get('code')!;
+    expect((await exchange(first.app, code, flow.verifier)).statusCode).toBe(200);
   });
   it('rejects untrusted exchange origin without consuming delivery', async () => {
     const { app } = await setup(); const flow = await begin(app); const code = returned(await callback(app, flow)).get('code')!;

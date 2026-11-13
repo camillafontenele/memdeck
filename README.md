@@ -47,7 +47,8 @@ nem use variáveis `VITE_` para segredos.
 
 Variáveis obrigatórias no backend:
 
-- `DATABASE_URL`: string de conexão Neon/PostgreSQL com TLS;
+- `DATABASE_URL`: URL Neon pooled, usada pela API em runtime;
+- `DIRECT_URL`: URL Neon direta, usada somente pelo Prisma CLI e migrations;
 - `JWT_SECRET`: segredo longo e aleatório;
 - `CORS_ORIGIN`: origem pública do frontend, ou múltiplas origens separadas por vírgula;
 - `PORT`: porta fornecida pela hospedagem.
@@ -73,7 +74,7 @@ o client separadamente, execute `npm run prisma:generate` na raiz. Instale tamb�
 as dependências de desenvolvimento na etapa de build (Prisma CLI e TypeScript).
 O runtime precisa das dependências de produção, incluindo `dotenv`, e de `dist`.
 
-As cinco migrations versionadas recriam o schema atual a partir de um banco vazio.
+As seis migrations versionadas recriam o schema atual a partir de um banco vazio.
 A CI valida isso em PostgreSQL 17 isolado, aplicando `migrate deploy` e comparando
 o resultado com o schema via `migrate diff --exit-code`.
 Não use `db push` como substituto das migrations no deploy.

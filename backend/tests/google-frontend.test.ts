@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { createHash } from 'node:crypto';
 
-vi.mock('../../frontend/src/services/api', () => ({ API_URL: 'https://api.example.com' }));
+vi.mock('../../frontend/src/services/api', () => ({
+  API_URL: 'https://api.example.com',
+  storeSessionToken: (token: string) => localStorage.setItem('token', token),
+}));
 function storage() {
   const entries = new Map<string, string>();
   return { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => entries.set(key, value), removeItem: (key: string) => entries.delete(key) };

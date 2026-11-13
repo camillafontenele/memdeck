@@ -46,6 +46,7 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://memdeck:memdeck_test@127.0.0.1:5432/memdeck_test?sslmode=disable
+      DIRECT_URL: postgresql://memdeck:memdeck_test@127.0.0.1:5432/memdeck_test?sslmode=disable
     defaults:
       run:
         working-directory: backend

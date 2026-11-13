@@ -15,7 +15,8 @@ model User {
   googleId     String?  @unique
   createdAt    DateTime @default(now())
 
-  decks Deck[]
+  decks          Deck[]
+  oauthDeliveries OAuthDelivery[]
 }
 
 model Deck {
@@ -48,4 +49,28 @@ model Review {
   nextReviewAt DateTime
 
   card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+}
+
+model OAuthTransaction {
+  stateHash   String   @id
+  browserHash String
+  nonce       String
+  verifier    String
+  challengeHash String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model OAuthDelivery {
+  codeHash      String   @id
+  challengeHash String
+  userId        String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
